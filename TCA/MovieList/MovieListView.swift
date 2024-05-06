@@ -10,33 +10,46 @@ import ComposableArchitecture
 
 struct MovieListView: View {
     @ComposableArchitecture.Bindable var store: StoreOf<MovieListReducer>
+    @State private var selectedMovie: MovieResponse? = nil
     
     var body: some View {
-        Form {
-            Section {
-                TextField("Search movie", text: $store.searchText.sending(\.searchTextChanged))
-            }
-            
-            Section {
-                Button("Trending daily movies") { store.send(.movieListButtonTapped) }
-            }
-            
-            if let apiError = store.apiError {
+        NavigationStack {
+            Form {
                 Section {
-                    Text("\(apiError.localizedDescription)")
+                    TextField("Search movie", text: $store.searchText.sending(\.searchTextChanged))
                 }
-            }
-            
-            if let results = store.movieListResponse?.results {
-                List {
-                    ForEach(results) { movie in
-                        let movieDetailsView: MovieDetailsView = .init(
-                            store: Store(initialState: MovieDetailsReducer.State(movieResponse: movie)) {
-                                MovieDetailsReducer()
+                
+                Section {
+                    Button("Trending daily movies") { store.send(.movieListButtonTapped) }
+                }
+                
+                if let apiError = store.apiError {
+                    Section {
+                        Text("\(apiError.localizedDescription)")
+                    }
+                }
+                
+                if let results = store.movieListResponse?.results {
+                    List {
+                        ForEach(results) { movie in
+                            Button {
+                                selectedMovie = movie
+                            } label: {
+                                Text(movie.title)
                             }
-                        )
-                        NavigationLink(destination: movieDetailsView) {
-                            Text(movie.title)
+                            .navigationDestination(
+                                isPresented: Binding(
+                                    get: { selectedMovie == movie },
+                                    set: { if !$0 { selectedMovie = nil } }
+                                ),
+                                destination: {
+                                    MovieDetailsView(store: Store(
+                                        initialState: MovieDetailsReducer.State(movieResponse: selectedMovie)
+                                    ) {
+                                        MovieDetailsReducer()
+                                    })
+                                }
+                            )
                         }
                     }
                 }
